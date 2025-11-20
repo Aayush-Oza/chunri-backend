@@ -1,5 +1,7 @@
 from flask import Blueprint, request
 from models import db, Cart, Product
+from flask_cors import cross_origin
+
 
 cart_bp = Blueprint("cart", __name__)
 
@@ -7,6 +9,7 @@ cart_bp = Blueprint("cart", __name__)
 # SAFE GET CART (AUTO-REMOVES INVALID PRODUCT ROWS)
 # -------------------------------------------------
 @cart_bp.get("/cart/<int:user_id>")
+@cross_origin()
 def get_cart(user_id):
     items = Cart.query.filter_by(user_id=user_id).all()
     result = []
@@ -41,6 +44,7 @@ def get_cart(user_id):
 # ADD TO CART (SAFE)
 # -------------------------------------------------
 @cart_bp.post("/cart/add")
+@cross_origin()
 def add_to_cart():
     data = request.json
     user_id = data.get("user_id")
@@ -68,6 +72,7 @@ def add_to_cart():
 # UPDATE QTY (SAFE)
 # -------------------------------------------------
 @cart_bp.put("/cart/update")
+@cross_origin()
 def update_cart():
     data = request.json
     cart_id = data["cart_id"]
@@ -90,6 +95,7 @@ def update_cart():
 # DELETE ITEM (SAFE)
 # -------------------------------------------------
 @cart_bp.delete("/cart/delete/<int:cart_id>")
+@cross_origin()
 def delete_cart(cart_id):
     item = Cart.query.get(cart_id)
     if not item:
@@ -104,6 +110,7 @@ def delete_cart(cart_id):
 # CLEAR CART (SAFE)
 # -------------------------------------------------
 @cart_bp.delete("/cart/clear/<int:user_id>")
+@cross_origin()
 def clear_cart(user_id):
     Cart.query.filter_by(user_id=user_id).delete()
     db.session.commit()
