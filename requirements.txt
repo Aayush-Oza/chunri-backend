@@ -6,4 +6,7 @@ python-dotenv
 cloudinary
 fpdf2
 flask-cors
-
+Flask-Migrate
+email-validator
+Flask-Mail
+Werkzeug
