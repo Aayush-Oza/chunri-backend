@@ -3,6 +3,8 @@ from models import db, Order, OrderItem, Product
 from fpdf import FPDF
 from utils.email_helper import send_email
 from flask_cors import CORS, cross_origin
+import io
+from flask import send_file
 
 order_bp = Blueprint("order", __name__)
 CORS(order_bp)   # IMPORTANT
@@ -113,37 +115,54 @@ def get_orders(user_id):
 # ---------------------- INVOICE DOWNLOAD -----------------------
 @order_bp.get("/invoice/<int:order_id>")
 @cross_origin()
-def invoice(order_id):
-    order = Order.query.get(order_id)
-    items = OrderItem.query.filter_by(order_id=order_id).all()
+def download_invoice(order_id):
+    try:
+        order = Order.query.get(order_id)
+        if not order:
+            return {"error": "Order not found"}, 404
 
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 14)
+        items = OrderItem.query.filter_by(order_id=order_id).all()
 
-    pdf.cell(200, 10, "Chunri Store Invoice", ln=True, align="C")
-    pdf.ln(5)
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=14)
 
-    pdf.set_font("Arial", 12)
-    pdf.cell(200, 10, f"Order ID: {order.id}", ln=True)
-    pdf.cell(200, 10, f"Total: ₹{order.total_price}", ln=True)
-    pdf.ln(5)
+        pdf.cell(200, 10, txt="Chunri Store Invoice", ln=True, align="C")
+        pdf.ln(5)
 
-    pdf.cell(80, 10, "Item", 1)
-    pdf.cell(30, 10, "Qty", 1)
-    pdf.cell(30, 10, "Price", 1)
-    pdf.cell(50, 10, "Subtotal", 1, ln=True)
+        pdf.cell(200, 10, txt=f"Order ID: {order.id}", ln=True)
+        pdf.cell(200, 10, txt=f"Total: ₹{order.total_price}", ln=True)
+        pdf.cell(200, 10, txt=f"Payment: {order.payment_method}", ln=True)
+        pdf.ln(5)
 
-    for item in items:
-        product = Product.query.get(item.product_id)
-        name = product.name if product else "Unknown"
-        subtotal = item.quantity * item.price
+        pdf.set_font("Arial", size=12)
+        pdf.cell(80, 10, txt="Item", border=1)
+        pdf.cell(30, 10, txt="Qty", border=1)
+        pdf.cell(30, 10, txt="Price", border=1)
+        pdf.cell(50, 10, txt="Subtotal", border=1, ln=True)
 
-        pdf.cell(80, 10, name, 1)
-        pdf.cell(30, 10, str(item.quantity), 1)
-        pdf.cell(30, 10, str(item.price), 1)
-        pdf.cell(50, 10, str(subtotal), 1, ln=True)
+        for item in items:
+            product = Product.query.get(item.product_id)
+            name = product.name if product else "Deleted Item"
+            subtotal = item.quantity * item.price
 
-    filename = f"invoice_{order_id}.pdf"
-    pdf.output(filename)
-    return send_file(filename, as_attachment=True)
+            pdf.cell(80, 10, txt=name, border=1)
+            pdf.cell(30, 10, txt=str(item.quantity), border=1)
+            pdf.cell(30, 10, txt=str(item.price), border=1)
+            pdf.cell(50, 10, txt=str(subtotal), border=1, ln=True)
+
+        # --- FIX: SEND PDF IN MEMORY (NO FILE SAVING) ---
+        pdf_buffer = io.BytesIO()
+        pdf.output(pdf_buffer)
+        pdf_buffer.seek(0)
+
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f"invoice_{order_id}.pdf"
+        )
+
+    except Exception as e:
+        print("INVOICE ERROR:", e)
+        return {"error": "Failed to generate invoice"}, 500
