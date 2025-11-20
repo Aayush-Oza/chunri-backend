@@ -2,14 +2,16 @@ from flask import Blueprint, request, send_file
 from models import db, Order, OrderItem, Product
 from fpdf import FPDF
 from utils.email_helper import send_email
+from flask_cors import cross_origin   # ← IMPORTANT
 
 order_bp = Blueprint("order", __name__)
 
 
 # -----------------------------------------------------
-# SAFE CHECKOUT (CANNOT CRASH + RETURNS CORS ALWAYS)
+# CHECKOUT (POST) + CORS FIX
 # -----------------------------------------------------
-@order_bp.post("/checkout")
+@order_bp.route("/checkout", methods=["POST"])
+@cross_origin()
 def checkout():
     try:
         data = request.json or {}
@@ -22,14 +24,13 @@ def checkout():
         payment = data.get("payment", "Unknown")
         items = data.get("items", [])
 
-        # VALIDATION
         if not user_id:
             return {"error": "user_id is required"}, 400
-
+        
         if not items:
-            return {"error": "No items found"}, 400
+            return {"error": "No items found in order"}, 400
 
-        # CREATE ORDER
+        # Create order
         order = Order(
             user_id=user_id,
             total_price=0,
@@ -40,24 +41,20 @@ def checkout():
             customer_address=address,
             payment_method=payment
         )
-
         db.session.add(order)
         db.session.commit()
 
         total_amount = 0
 
-        for item in items:
-            product_id = item.get("product_id")
-            qty = item.get("qty", 1)
-
-            if not product_id:
-                continue
+        for it in items:
+            product_id = it.get("product_id")
+            qty = it.get("qty", 1)
 
             product = Product.query.get(product_id)
             if not product:
                 continue
 
-            subtotal = product.price * qty
+            subtotal = qty * product.price
             total_amount += subtotal
 
             order_item = OrderItem(
@@ -66,13 +63,12 @@ def checkout():
                 quantity=qty,
                 price=product.price
             )
-
             db.session.add(order_item)
 
         order.total_price = total_amount
         db.session.commit()
 
-        # SEND EMAIL (SAFE)
+        # Email sending
         try:
             send_email(
                 to=email,
@@ -86,14 +82,12 @@ Order ID: {order.id}
 Total Amount: ₹{total_amount}
 Payment Method: {payment}
 
-Your order will be shipped soon.
-
-Thank You,
-Chunri Store
+Thank you,
+Chunri Store Team
 """
             )
         except Exception as e:
-            print("Email Error:", e)
+            print("EMAIL ERROR:", e)
 
         return {
             "message": "Order placed successfully",
@@ -106,16 +100,25 @@ Chunri Store
         return {"error": "Server crashed"}, 500
 
 
+# -----------------------------------------------------
+# PRE-FLIGHT OPTIONS (REQUIRED FOR CORS)
+# -----------------------------------------------------
+@order_bp.route("/checkout", methods=["OPTIONS"])
+@cross_origin()
+def checkout_options():
+    return {}, 200
+
 
 # -----------------------------------------------------
 # GET USER ORDERS
 # -----------------------------------------------------
 @order_bp.get("/orders/<int:user_id>")
+@cross_origin()
 def get_user_orders(user_id):
     try:
         orders = Order.query.filter_by(user_id=user_id).all()
-        response = []
 
+        response = []
         for o in orders:
             items = OrderItem.query.filter_by(order_id=o.id).all()
 
@@ -129,8 +132,7 @@ def get_user_orders(user_id):
                         "product_id": i.product_id,
                         "qty": i.quantity,
                         "price": i.price
-                    }
-                    for i in items
+                    } for i in items
                 ]
             })
 
@@ -141,11 +143,11 @@ def get_user_orders(user_id):
         return {"error": "Failed to fetch orders"}, 500
 
 
-
 # -----------------------------------------------------
-# DOWNLOAD INVOICE
+# INVOICE DOWNLOAD
 # -----------------------------------------------------
 @order_bp.get("/invoice/<int:order_id>")
+@cross_origin()
 def download_invoice(order_id):
     try:
         order = Order.query.get(order_id)
