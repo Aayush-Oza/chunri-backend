@@ -2,16 +2,16 @@ from flask import Blueprint, request, send_file
 from models import db, Order, OrderItem, Product
 from fpdf import FPDF
 from utils.email_helper import send_email
-from flask_cors import cross_origin   # ← IMPORTANT
+from flask_cors import CORS, cross_origin
 
 order_bp = Blueprint("order", __name__)
+CORS(order_bp)   # <---- THE REAL FIX
 
 
 # -----------------------------------------------------
 # CHECKOUT (POST) + CORS FIX
 # -----------------------------------------------------
 @order_bp.route("/checkout", methods=["POST"])
-@cross_origin()
 def checkout():
     try:
         data = request.json or {}
