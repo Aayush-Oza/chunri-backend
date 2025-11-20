@@ -1,9 +1,11 @@
 from flask import Blueprint, request
 from models import db, Product
+from flask_cors import cross_origin
 
 product_bp = Blueprint('product', __name__)
 
 @product_bp.get('/products')
+@cross_origin()
 def get_products():
     cloth = request.args.get("cloth_type")
     size = request.args.get("size")
