@@ -2,35 +2,31 @@ from flask import Blueprint, request, send_file
 from models import db, Order, OrderItem, Product
 from fpdf import FPDF
 from utils.email_helper import send_email
-from flask_cors import CORS, cross_origin
+from flask_cors import cross_origin
 
 order_bp = Blueprint("order", __name__)
-CORS(order_bp)   # <---- THE REAL FIX
 
-
-# -----------------------------------------------------
-# CHECKOUT (POST) + CORS FIX
-# -----------------------------------------------------
+# CHECKOUT
 @order_bp.route("/checkout", methods=["POST"])
+@cross_origin()
 def checkout():
     try:
         data = request.json or {}
 
         user_id = data.get("user_id")
-        name = data.get("name", "Unknown Customer")
-        email = data.get("email", "no-email")
-        phone = data.get("phone", "no-phone")
-        address = data.get("address", "no-address")
-        payment = data.get("payment", "Unknown")
+        name = data.get("name", "")
+        email = data.get("email", "")
+        phone = data.get("phone", "")
+        address = data.get("address", "")
+        payment = data.get("payment", "")
         items = data.get("items", [])
 
         if not user_id:
             return {"error": "user_id is required"}, 400
-        
+
         if not items:
             return {"error": "No items found in order"}, 400
 
-        # Create order
         order = Order(
             user_id=user_id,
             total_price=0,
@@ -47,47 +43,24 @@ def checkout():
         total_amount = 0
 
         for it in items:
-            product_id = it.get("product_id")
-            qty = it.get("qty", 1)
-
-            product = Product.query.get(product_id)
+            product = Product.query.get(it["product_id"])
             if not product:
                 continue
 
+            qty = it.get("qty", 1)
             subtotal = qty * product.price
             total_amount += subtotal
 
-            order_item = OrderItem(
+            new_item = OrderItem(
                 order_id=order.id,
                 product_id=product.id,
                 quantity=qty,
                 price=product.price
             )
-            db.session.add(order_item)
+            db.session.add(new_item)
 
         order.total_price = total_amount
         db.session.commit()
-
-        # Email sending
-        try:
-            send_email(
-                to=email,
-                subject="Your Chunri Store Order is Confirmed!",
-                body=f"""
-Hello {name},
-
-Thank you for shopping with Chunri Store!
-
-Order ID: {order.id}
-Total Amount: ₹{total_amount}
-Payment Method: {payment}
-
-Thank you,
-Chunri Store Team
-"""
-            )
-        except Exception as e:
-            print("EMAIL ERROR:", e)
 
         return {
             "message": "Order placed successfully",
@@ -100,92 +73,8 @@ Chunri Store Team
         return {"error": "Server crashed"}, 500
 
 
-# -----------------------------------------------------
-# PRE-FLIGHT OPTIONS (REQUIRED FOR CORS)
-# -----------------------------------------------------
+# PRE-FLIGHT
 @order_bp.route("/checkout", methods=["OPTIONS"])
 @cross_origin()
 def checkout_options():
     return {}, 200
-
-
-# -----------------------------------------------------
-# GET USER ORDERS
-# -----------------------------------------------------
-@order_bp.get("/orders/<int:user_id>")
-@cross_origin()
-def get_user_orders(user_id):
-    try:
-        orders = Order.query.filter_by(user_id=user_id).all()
-
-        response = []
-        for o in orders:
-            items = OrderItem.query.filter_by(order_id=o.id).all()
-
-            response.append({
-                "order_id": o.id,
-                "total_price": o.total_price,
-                "payment_status": o.payment_status,
-                "created_at": o.created_at,
-                "items": [
-                    {
-                        "product_id": i.product_id,
-                        "qty": i.quantity,
-                        "price": i.price
-                    } for i in items
-                ]
-            })
-
-        return response
-
-    except Exception as e:
-        print("ORDER FETCH ERROR:", e)
-        return {"error": "Failed to fetch orders"}, 500
-
-
-# -----------------------------------------------------
-# INVOICE DOWNLOAD
-# -----------------------------------------------------
-@order_bp.get("/invoice/<int:order_id>")
-@cross_origin()
-def download_invoice(order_id):
-    try:
-        order = Order.query.get(order_id)
-        items = OrderItem.query.filter_by(order_id=order_id).all()
-
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=14)
-
-        pdf.cell(200, 10, txt="Chunri Store Invoice", ln=True, align="C")
-        pdf.ln(5)
-
-        pdf.cell(200, 10, txt=f"Order ID: {order.id}", ln=True)
-        pdf.cell(200, 10, txt=f"Total: ₹{order.total_price}", ln=True)
-        pdf.cell(200, 10, txt=f"Payment: {order.payment_method}", ln=True)
-        pdf.ln(5)
-
-        pdf.set_font("Arial", size=12)
-        pdf.cell(80, 10, txt="Item", border=1)
-        pdf.cell(30, 10, txt="Qty", border=1)
-        pdf.cell(30, 10, txt="Price", border=1)
-        pdf.cell(50, 10, txt="Subtotal", border=1, ln=True)
-
-        for item in items:
-            product = Product.query.get(item.product_id)
-            name = product.name if product else "Unknown"
-            subtotal = item.quantity * item.price
-
-            pdf.cell(80, 10, txt=name, border=1)
-            pdf.cell(30, 10, txt=str(item.quantity), border=1)
-            pdf.cell(30, 10, txt=str(item.price), border=1)
-            pdf.cell(50, 10, txt=str(subtotal), border=1, ln=True)
-
-        filename = f"invoice_{order_id}.pdf"
-        pdf.output(filename)
-
-        return send_file(filename, as_attachment=True)
-
-    except Exception as e:
-        print("INVOICE ERROR:", e)
-        return {"error": "Failed to generate invoice"}, 500
