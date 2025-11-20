@@ -4,7 +4,7 @@ from fpdf import FPDF
 from utils.email_helper import send_email
 from flask_cors import CORS, cross_origin
 import io
-from flask import send_file
+
 
 order_bp = Blueprint("order", __name__)
 CORS(order_bp)   # IMPORTANT
@@ -151,14 +151,13 @@ def download_invoice(order_id):
             pdf.cell(30, 10, txt=str(item.price), border=1)
             pdf.cell(50, 10, txt=str(subtotal), border=1, ln=True)
 
-        # --- FIX: SEND PDF IN MEMORY (NO FILE SAVING) ---
-        pdf_buffer = io.BytesIO()
-        pdf.output(pdf_buffer)
-        pdf_buffer.seek(0)
+        # FIX: Convert PDF to bytes (correct way)
+        pdf_data = pdf.output(dest='S').encode('latin-1')
+        pdf_buffer = io.BytesIO(pdf_data)
 
         return send_file(
             pdf_buffer,
-            mimetype='application/pdf',
+            mimetype="application/pdf",
             as_attachment=True,
             download_name=f"invoice_{order_id}.pdf"
         )
