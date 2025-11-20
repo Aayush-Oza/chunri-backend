@@ -16,7 +16,7 @@ def create_app():
     app.config.from_object(Config)
 
     # GLOBAL CORS (SAFE)
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    CORS(app)
 
     db.init_app(app)
     Migrate(app, db)
@@ -38,3 +38,4 @@ app = create_app()
 
 if __name__ == "__main__":
     app.run(debug=True)
+
