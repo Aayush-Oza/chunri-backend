@@ -15,8 +15,8 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # FIXED CORS (correct structure)
-    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+    # GLOBAL CORS (SAFE)
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
     db.init_app(app)
     Migrate(app, db)
