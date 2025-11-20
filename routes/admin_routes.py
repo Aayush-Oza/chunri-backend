@@ -10,3 +10,4 @@ def stats():
         "products": Product.query.count(),
         "orders": Order.query.count()
     }
+
