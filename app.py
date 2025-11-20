@@ -4,7 +4,6 @@ from models import db
 from flask_cors import CORS
 from flask_migrate import Migrate
 
-# Blueprints
 from routes.auth_routes import auth_bp
 from routes.product_routes import product_bp
 from routes.cart_routes import cart_bp
@@ -16,19 +15,12 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # FULL CORS ENABLE
-    CORS(
-        app,
-        resources={r"/*": {"origins": "*"}},
-        supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization"],
-        expose_headers=["Content-Type"]
-    )
+    # FIXED CORS (correct structure)
+    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
     db.init_app(app)
     Migrate(app, db)
 
-    # Register Blueprints
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(product_bp, url_prefix="/api")
     app.register_blueprint(cart_bp, url_prefix="/api")
@@ -36,16 +28,11 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(analytics_bp, url_prefix="/admin")
 
-    
-
-    
-
     @app.route("/")
     def home():
         return {"message": "Chunri Backend Running"}
 
     return app
-
 
 app = create_app()
 
