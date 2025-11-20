@@ -19,6 +19,7 @@ def create_app():
     CORS(app, supports_credentials=True, origins="*")
 
 
+
     db.init_app(app)
     Migrate(app, db)
 
@@ -39,6 +40,7 @@ app = create_app()
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
 
 
