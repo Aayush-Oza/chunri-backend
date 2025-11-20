@@ -150,3 +150,62 @@ def login():
         "user_id": user.id,
         "is_admin": user.is_admin
     }
+# ----------------------------------------------------
+# GET PROFILE
+# ----------------------------------------------------
+@auth_bp.get("/profile/<int:user_id>")
+def get_profile(user_id):
+    user = User.query.get(user_id)
+
+    if not user:
+        return {"error": "User not found"}, 404
+
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "phone": user.phone,
+        "address": user.address,
+        "is_admin": user.is_admin
+    }
+# ----------------------------------------------------
+# UPDATE PROFILE
+# ----------------------------------------------------
+@auth_bp.put("/profile/update/<int:user_id>")
+def update_profile(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return {"error": "User not found"}, 404
+
+    data = request.json
+
+    # Only update allowed fields
+    for field in ["name", "email", "phone", "address"]:
+        if field in data and data[field]:
+            setattr(user, field, data[field])
+
+    db.session.commit()
+
+    return {"message": "Profile updated successfully"}
+# ----------------------------------------------------
+# CHANGE PASSWORD
+# ----------------------------------------------------
+@auth_bp.put("/profile/change-password/<int:user_id>")
+def change_password(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return {"error": "User not found"}, 404
+
+    data = request.json
+    old_password = data.get("old_password")
+    new_password = data.get("new_password")
+
+    # Verify old password
+    if not user.check_password(old_password):
+        return {"error": "Incorrect old password"}, 400
+
+    # Set new password
+    user.set_password(new_password)
+    db.session.commit()
+
+    return {"message": "Password updated successfully"}
