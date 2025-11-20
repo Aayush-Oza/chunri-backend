@@ -125,21 +125,22 @@ def download_invoice(order_id):
 
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", size=14)
 
+        pdf.set_font("Arial", size=14)
         pdf.cell(200, 10, txt="Chunri Store Invoice", ln=True, align="C")
         pdf.ln(5)
 
+        pdf.set_font("Arial", size=12)
         pdf.cell(200, 10, txt=f"Order ID: {order.id}", ln=True)
-        pdf.cell(200, 10, txt=f"Total: ₹{order.total_price}", ln=True)
+        pdf.cell(200, 10, txt=f"Total: Rs. {order.total_price}", ln=True)
         pdf.cell(200, 10, txt=f"Payment: {order.payment_method}", ln=True)
         pdf.ln(5)
 
-        pdf.set_font("Arial", size=12)
+        pdf.set_font("Arial", size=11)
         pdf.cell(80, 10, txt="Item", border=1)
         pdf.cell(30, 10, txt="Qty", border=1)
-        pdf.cell(30, 10, txt="Price", border=1)
-        pdf.cell(50, 10, txt="Subtotal", border=1, ln=True)
+        pdf.cell(40, 10, txt="Price", border=1)
+        pdf.cell(40, 10, txt="Subtotal", border=1, ln=True)
 
         for item in items:
             product = Product.query.get(item.product_id)
@@ -148,16 +149,16 @@ def download_invoice(order_id):
 
             pdf.cell(80, 10, txt=name, border=1)
             pdf.cell(30, 10, txt=str(item.quantity), border=1)
-            pdf.cell(30, 10, txt=str(item.price), border=1)
-            pdf.cell(50, 10, txt=str(subtotal), border=1, ln=True)
+            pdf.cell(40, 10, txt=f"Rs. {item.price}", border=1)
+            pdf.cell(40, 10, txt=f"Rs. {subtotal}", border=1, ln=True)
 
-        # FIX: Convert PDF to bytes (correct way)
-        pdf_data = pdf.output(dest='S').encode('latin-1')
-        pdf_buffer = io.BytesIO(pdf_data)
+        pdf_buffer = io.BytesIO()
+        pdf.output(pdf_buffer)
+        pdf_buffer.seek(0)
 
         return send_file(
             pdf_buffer,
-            mimetype="application/pdf",
+            mimetype='application/pdf',
             as_attachment=True,
             download_name=f"invoice_{order_id}.pdf"
         )
