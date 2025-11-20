@@ -36,14 +36,7 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(analytics_bp, url_prefix="/admin")
 
-    # GLOBAL CORS FIX FOR PRE-FLIGHT
-    @app.route('/<path:path>', methods=['OPTIONS'])
-    def options_handler(path):
-        response = app.response_class()
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-        return response, 204
+    
 
     
 
