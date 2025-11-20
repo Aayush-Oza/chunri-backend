@@ -21,8 +21,8 @@ ADMIN_PASSWORD = "Pkumawat@121"
 def send_email(to, subject, body):
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
-    smtp_user = "aayushoza2006@gmail.com"      # your gmail
-    smtp_password = "ocsjcyvziusorfuw"         # app password
+    smtp_user = "aayushoza2006@gmail.com"
+    smtp_password = "ocsjcyvziusorfuw"
 
     msg = MIMEText(body)
     msg["Subject"] = subject
@@ -38,7 +38,9 @@ def send_email(to, subject, body):
         print("EMAIL SENT:", to)
     except Exception as e:
         print("EMAIL FAILED:", e)
+        return False    # 🔥 IMPORTANT: prevents backend crash
 
+    return True
 
 # ----------------------------------------------------
 # SEND OTP
@@ -127,29 +129,35 @@ def register():
 # ----------------------------------------------------
 @auth_bp.post("/login")
 def login():
-    data = request.json
-    email = data["email"]
-    password = data["password"]
+    try:
+        data = request.json
+        email = data["email"]
+        password = data["password"]
 
-    # Admin login
-    if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
+        # Admin login
+        if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
+            return {
+                "message": "Admin login successful",
+                "user_id": 0,
+                "is_admin": True
+            }
+
+        # User login
+        user = User.query.filter_by(email=email).first()
+
+        if not user or not user.check_password(password):
+            return {"error": "Invalid credentials"}, 401
+
         return {
-            "message": "Admin login successful",
-            "user_id": 0,
-            "is_admin": True
+            "message": "Login successful",
+            "user_id": user.id,
+            "is_admin": user.is_admin
         }
 
-    # User login
-    user = User.query.filter_by(email=email).first()
+    except Exception as e:
+        print("LOGIN ERROR:", e)
+        return {"error": "Internal Server Error"}, 500
 
-    if not user or not user.check_password(password):
-        return {"error": "Invalid credentials"}, 401
-
-    return {
-        "message": "Login successful",
-        "user_id": user.id,
-        "is_admin": user.is_admin
-    }
 # ----------------------------------------------------
 # GET PROFILE
 # ----------------------------------------------------
