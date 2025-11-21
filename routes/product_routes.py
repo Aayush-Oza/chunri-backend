@@ -1,8 +1,9 @@
 from flask import Blueprint, request
 from models import db, Product
-from flask_cors import cross_origin
+from flask_cors import CORS, cross_origin
 
 product_bp = Blueprint('product', __name__)
+CORS(product_bp)     # important
 
 
 # -----------------------------------------------------------
@@ -123,3 +124,4 @@ def update_product(id):
 
     db.session.commit()
     return {"message": "Product updated successfully!"}
+
