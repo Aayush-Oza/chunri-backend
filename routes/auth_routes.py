@@ -65,9 +65,13 @@ def send_otp():
     db.session.add(record)
     db.session.commit()
 
-    send_email(email, "Chunri Store OTP", f"Your OTP is: {otp}")
+    email_status = send_email(email, "Chunri Store OTP", f"Your OTP is: {otp}")
+
+    if not email_status:
+        return {"error": "Failed to send OTP email"}, 500
 
     return {"message": "OTP sent successfully"}
+
 
 
 # ----------------------------------------------------
@@ -234,3 +238,4 @@ def change_password(user_id):
     db.session.commit()
 
     return {"message": "Password updated successfully"}
+
