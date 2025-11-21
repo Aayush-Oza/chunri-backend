@@ -166,3 +166,36 @@ def download_invoice(order_id):
     except Exception as e:
         print("INVOICE ERROR:", e)
         return {"error": "Failed to generate invoice"}, 500
+# ---------------------- ADMIN: GET ALL ORDERS -----------------------
+@order_bp.get("/admin/orders")
+@cross_origin()
+def get_all_orders():
+    orders = Order.query.order_by(Order.id.desc()).all()
+    output = []
+
+    for o in orders:
+        items = OrderItem.query.filter_by(order_id=o.id).all()
+
+        output.append({
+            "order_id": o.id,
+            "user_id": o.user_id,
+            "total_price": o.total_price,
+            "payment_status": o.payment_status,
+            "payment_method": o.payment_method,
+            "customer_name": o.customer_name,
+            "customer_email": o.customer_email,
+            "customer_phone": o.customer_phone,
+            "customer_address": o.customer_address,
+            "created_at": o.created_at,
+            "items": [
+                {
+                    "product_id": i.product_id,
+                    "qty": i.quantity,
+                    "price": i.price
+                }
+                for i in items
+            ]
+        })
+
+    return output
+
