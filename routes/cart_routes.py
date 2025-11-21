@@ -1,12 +1,13 @@
 from flask import Blueprint, request
 from models import db, Cart, Product
-from flask_cors import cross_origin
-
+from flask_cors import CORS, cross_origin   # <-- MUST BE IMPORTED
 
 cart_bp = Blueprint("cart", __name__)
-CORS(cart_bp)
+CORS(cart_bp)   # <-- NOW THIS WORKS
+
+
 # -------------------------------------------------
-# SAFE GET CART (AUTO-REMOVES INVALID PRODUCT ROWS)
+# SAFE GET CART
 # -------------------------------------------------
 @cart_bp.get("/cart/<int:user_id>")
 @cross_origin()
@@ -19,7 +20,6 @@ def get_cart(user_id):
         product = Product.query.get(item.product_id)
 
         if not product:
-            # INVALID cart row → delete it permanently
             db.session.delete(item)
             cleaned = True
             continue
@@ -41,7 +41,7 @@ def get_cart(user_id):
 
 
 # -------------------------------------------------
-# ADD TO CART (SAFE)
+# ADD TO CART
 # -------------------------------------------------
 @cart_bp.post("/cart/add")
 @cross_origin()
@@ -51,12 +51,10 @@ def add_to_cart():
     product_id = data.get("product_id")
     qty = data.get("qty", 1)
 
-    # CHECK product exists
     product = Product.query.get(product_id)
     if not product:
         return {"error": "Product does not exist"}, 400
 
-    # BACKEND STOCK VALIDATION
     if qty > product.stock:
         return {"error": f"Only {product.stock} items in stock"}, 400
 
@@ -64,11 +62,8 @@ def add_to_cart():
 
     if existing:
         new_qty = existing.qty + qty
-
-        # STOCK CHECK for updated quantity
         if new_qty > product.stock:
             return {"error": f"Only {product.stock} items in stock"}, 400
-
         existing.qty = new_qty
     else:
         new_item = Cart(user_id=user_id, product_id=product_id, qty=qty)
@@ -77,8 +72,9 @@ def add_to_cart():
     db.session.commit()
     return {"message": "Added to cart"}
 
+
 # -------------------------------------------------
-# UPDATE QTY (SAFE)
+# UPDATE QTY
 # -------------------------------------------------
 @cart_bp.put("/cart/update")
 @cross_origin()
@@ -93,7 +89,6 @@ def update_cart():
 
     product = Product.query.get(item.product_id)
 
-    # BACKEND STOCK CHECK
     if qty > product.stock:
         return {"error": f"Only {product.stock} items in stock"}, 400
 
@@ -104,8 +99,9 @@ def update_cart():
     db.session.commit()
     return {"message": "Quantity updated"}
 
+
 # -------------------------------------------------
-# DELETE ITEM (SAFE)
+# DELETE
 # -------------------------------------------------
 @cart_bp.delete("/cart/delete/<int:cart_id>")
 @cross_origin()
@@ -120,7 +116,7 @@ def delete_cart(cart_id):
 
 
 # -------------------------------------------------
-# CLEAR CART (SAFE)
+# CLEAR CART
 # -------------------------------------------------
 @cart_bp.delete("/cart/clear/<int:user_id>")
 @cross_origin()
@@ -128,4 +124,3 @@ def clear_cart(user_id):
     Cart.query.filter_by(user_id=user_id).delete()
     db.session.commit()
     return {"message": "Cart cleared"}
-
