@@ -56,17 +56,26 @@ def add_to_cart():
     if not product:
         return {"error": "Product does not exist"}, 400
 
+    # BACKEND STOCK VALIDATION
+    if qty > product.stock:
+        return {"error": f"Only {product.stock} items in stock"}, 400
+
     existing = Cart.query.filter_by(user_id=user_id, product_id=product_id).first()
 
     if existing:
-        existing.qty += qty
+        new_qty = existing.qty + qty
+
+        # STOCK CHECK for updated quantity
+        if new_qty > product.stock:
+            return {"error": f"Only {product.stock} items in stock"}, 400
+
+        existing.qty = new_qty
     else:
         new_item = Cart(user_id=user_id, product_id=product_id, qty=qty)
         db.session.add(new_item)
 
     db.session.commit()
     return {"message": "Added to cart"}
-
 
 # -------------------------------------------------
 # UPDATE QTY (SAFE)
@@ -82,14 +91,18 @@ def update_cart():
     if not item:
         return {"error": "Cart item not found"}, 404
 
-    # Prevent invalid values
+    product = Product.query.get(item.product_id)
+
+    # BACKEND STOCK CHECK
+    if qty > product.stock:
+        return {"error": f"Only {product.stock} items in stock"}, 400
+
     if qty < 1:
         qty = 1
 
     item.qty = qty
     db.session.commit()
     return {"message": "Quantity updated"}
-
 
 # -------------------------------------------------
 # DELETE ITEM (SAFE)
