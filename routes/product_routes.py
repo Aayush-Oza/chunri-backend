@@ -19,7 +19,8 @@ def get_products():
     design = request.args.get("design")
     search = request.args.get("search")
 
-    query = Product.query
+    # Only get non-deleted products
+    query = Product.query.filter_by(is_active=True)
 
     if cloth:
         query = query.filter_by(cloth_type=cloth)
@@ -45,7 +46,6 @@ def get_products():
         "size": p.size,
         "color": p.color
     } for p in products]
-
 
 # -----------------------------------------------------------
 # ADD PRODUCT  ✅ FIXED CORS + OPTIONS
