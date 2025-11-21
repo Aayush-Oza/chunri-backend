@@ -66,19 +66,24 @@ def add_product():
 # -----------------------------------------------------------
 # DELETE PRODUCT  (CORS FIXED)
 # -----------------------------------------------------------
-@product_bp.route('/product/<int:id>', methods=["DELETE", "OPTIONS"])
-@cross_origin()
-def delete_product(id):
-    if request.method == "OPTIONS":
-        return {}, 200
+@product_bp.delete("/product/<int:product_id>")
+def delete_product(product_id):
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return {"error": "Product not found"}, 404
 
-    product = Product.query.get(id)
-    if not product:
-        return {"error": "Product not found"}, 404
+        # Soft delete
+        product.is_active = False
+        db.session.commit()
 
-    db.session.delete(product)
-    db.session.commit()
-    return {"message": "Product deleted"}
+        return {"message": "Product deleted (soft delete)"}
+
+    except Exception as e:
+        db.session.rollback()
+        print("DELETE ERROR:", e)
+        return {"error": str(e)}, 500
+
 
 
 # -----------------------------------------------------------
