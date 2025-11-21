@@ -4,14 +4,20 @@ from flask_cors import cross_origin
 
 product_bp = Blueprint('product', __name__)
 
-@product_bp.get('/products')
+# -----------------------------------------------------------
+# GET PRODUCTS (with filters)
+# -----------------------------------------------------------
+@product_bp.route('/products', methods=["GET", "OPTIONS"])
 @cross_origin()
 def get_products():
+    if request.method == "OPTIONS":
+        return {}, 200
+
     cloth = request.args.get("cloth_type")
     size = request.args.get("size")
     color = request.args.get("color")
     design = request.args.get("design")
-    search = request.args.get("search")   # <-- ADD THIS
+    search = request.args.get("search")
 
     query = Product.query
 
@@ -23,7 +29,7 @@ def get_products():
         query = query.filter_by(color=color)
     if design:
         query = query.filter_by(design=design)
-    if search:  # <--- ADD THIS FILTER
+    if search:
         query = query.filter(Product.name.ilike(f"%{search}%"))
 
     products = query.all()
@@ -41,18 +47,31 @@ def get_products():
     } for p in products]
 
 
-# ADD PRODUCT
-@product_bp.post('/product')
+# -----------------------------------------------------------
+# ADD PRODUCT  ✅ FIXED CORS + OPTIONS
+# -----------------------------------------------------------
+@product_bp.route('/product', methods=["POST", "OPTIONS"])
+@cross_origin()
 def add_product():
+    if request.method == "OPTIONS":
+        return {}, 200
+
     data = request.json
     p = Product(**data)
     db.session.add(p)
     db.session.commit()
-    return {"message": "Product added"}
+    return {"message": "Product added successfully!"}
 
-# DELETE PRODUCT
-@product_bp.delete('/product/<int:id>')
+
+# -----------------------------------------------------------
+# DELETE PRODUCT  (CORS FIXED)
+# -----------------------------------------------------------
+@product_bp.route('/product/<int:id>', methods=["DELETE", "OPTIONS"])
+@cross_origin()
 def delete_product(id):
+    if request.method == "OPTIONS":
+        return {}, 200
+
     product = Product.query.get(id)
     if not product:
         return {"error": "Product not found"}, 404
@@ -61,18 +80,28 @@ def delete_product(id):
     db.session.commit()
     return {"message": "Product deleted"}
 
-# UPDATE PRODUCT
-@product_bp.put('/product/<int:id>')
+
+# -----------------------------------------------------------
+# UPDATE PRODUCT (CORS FIXED)
+# -----------------------------------------------------------
+@product_bp.route('/product/<int:id>', methods=["PUT", "OPTIONS"])
+@cross_origin()
 def update_product(id):
+    if request.method == "OPTIONS":
+        return {}, 200
+
     data = request.json
     product = Product.query.get(id)
 
     if not product:
         return {"error": "Product not found"}, 404
 
-    for key in ["name", "price", "stock", "cloth_type", "design", "size", "color", "description", "image_url"]:
+    for key in [
+        "name", "price", "stock", "cloth_type", "design",
+        "size", "color", "description", "image_url"
+    ]:
         if key in data:
             setattr(product, key, data[key])
 
     db.session.commit()
-    return {"message": "Product updated"}
+    return {"message": "Product updated successfully!"}
