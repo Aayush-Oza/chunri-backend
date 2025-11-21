@@ -4,6 +4,7 @@ from flask_cors import cross_origin
 
 product_bp = Blueprint('product', __name__)
 
+
 # -----------------------------------------------------------
 # GET PRODUCTS (with filters)
 # -----------------------------------------------------------
@@ -19,7 +20,6 @@ def get_products():
     design = request.args.get("design")
     search = request.args.get("search")
 
-    # Only get non-deleted products
     query = Product.query.filter_by(is_active=True)
 
     if cloth:
@@ -37,6 +37,7 @@ def get_products():
 
     return [{
         "id": p.id,
+        "product_no": p.product_no,
         "name": p.name,
         "price": p.price,
         "image_url": p.image_url,
@@ -47,8 +48,9 @@ def get_products():
         "color": p.color
     } for p in products]
 
+
 # -----------------------------------------------------------
-# ADD PRODUCT  ✅ FIXED CORS + OPTIONS
+# ADD PRODUCT
 # -----------------------------------------------------------
 @product_bp.route('/product', methods=["POST", "OPTIONS"])
 @cross_origin()
@@ -57,14 +59,27 @@ def add_product():
         return {}, 200
 
     data = request.json
-    p = Product(**data)
+
+    p = Product(
+        product_no=data.get("product_no"),
+        name=data.get("name"),
+        description=data.get("description"),
+        price=data.get("price"),
+        stock=data.get("stock"),
+        cloth_type=data.get("cloth_type"),
+        design=data.get("design"),
+        size=data.get("size"),
+        color=data.get("color"),
+        image_url=data.get("image_url")
+    )
+
     db.session.add(p)
     db.session.commit()
     return {"message": "Product added successfully!"}
 
 
 # -----------------------------------------------------------
-# DELETE PRODUCT  (CORS FIXED)
+# DELETE PRODUCT (SOFT DELETE)
 # -----------------------------------------------------------
 @product_bp.delete("/product/<int:product_id>")
 def delete_product(product_id):
@@ -73,7 +88,6 @@ def delete_product(product_id):
         if not product:
             return {"error": "Product not found"}, 404
 
-        # Soft delete
         product.is_active = False
         db.session.commit()
 
@@ -85,9 +99,8 @@ def delete_product(product_id):
         return {"error": str(e)}, 500
 
 
-
 # -----------------------------------------------------------
-# UPDATE PRODUCT (CORS FIXED)
+# UPDATE PRODUCT
 # -----------------------------------------------------------
 @product_bp.route('/product/<int:id>', methods=["PUT", "OPTIONS"])
 @cross_origin()
@@ -102,8 +115,8 @@ def update_product(id):
         return {"error": "Product not found"}, 404
 
     for key in [
-        "name", "price", "stock", "cloth_type", "design",
-        "size", "color", "description", "image_url"
+        "product_no", "name", "price", "stock", "cloth_type",
+        "design", "size", "color", "description", "image_url"
     ]:
         if key in data:
             setattr(product, key, data[key])
