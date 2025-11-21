@@ -4,7 +4,7 @@ from flask_cors import cross_origin
 
 
 cart_bp = Blueprint("cart", __name__)
-
+CORS(cart_bp)
 # -------------------------------------------------
 # SAFE GET CART (AUTO-REMOVES INVALID PRODUCT ROWS)
 # -------------------------------------------------
@@ -128,3 +128,4 @@ def clear_cart(user_id):
     Cart.query.filter_by(user_id=user_id).delete()
     db.session.commit()
     return {"message": "Cart cleared"}
+
