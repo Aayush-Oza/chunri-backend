@@ -127,42 +127,41 @@ def download_invoice(order_id):
 
         # ---------- HEADER ----------
         pdf.set_font("Arial", "B", 18)
-        pdf.set_text_color(214, 40, 40)   # Chunri red
+        pdf.set_text_color(214, 40, 40)
         pdf.cell(190, 10, "CHUNRI STORE - INVOICE", ln=True, align="C")
         pdf.ln(5)
 
-        # ---------- INVOICE DETAILS ----------
+        # ---------- META ----------
         pdf.set_font("Arial", "", 12)
         pdf.set_text_color(0, 0, 0)
-
         pdf.cell(100, 8, f"Invoice No: CHN-{order.id:05}", ln=True)
         pdf.cell(100, 8, f"Date: {order.created_at.strftime('%d-%m-%Y')}", ln=True)
         pdf.cell(100, 8, f"Time: {order.created_at.strftime('%I:%M %p')}", ln=True)
         pdf.ln(5)
 
-        # ---------- CUSTOMER DETAILS BOX ----------
+        # ---------- CUSTOMER DETAILS ----------
         pdf.set_font("Arial", "B", 12)
         pdf.set_fill_color(240, 240, 240)
         pdf.cell(190, 8, "Customer Details", ln=True, fill=True)
-        pdf.set_font("Arial", "", 12)
 
+        pdf.set_font("Arial", "", 12)
         pdf.cell(190, 8, f"Name: {order.customer_name}", ln=True)
         pdf.cell(190, 8, f"Email: {order.customer_email}", ln=True)
         pdf.cell(190, 8, f"Phone: {order.customer_phone}", ln=True)
         pdf.multi_cell(190, 8, f"Address: {order.customer_address}")
-        pdf.ln(5)
+        pdf.ln(4)
 
-        # ---------- ORDER TABLE HEADER ----------
+        # ---------- TABLE HEADER ----------
         pdf.set_font("Arial", "B", 12)
         pdf.set_fill_color(214, 40, 40)
         pdf.set_text_color(255, 255, 255)
 
         pdf.cell(80, 10, "Item", border=1, fill=True)
         pdf.cell(30, 10, "Qty", border=1, fill=True, align="C")
-        pdf.cell(40, 10, "Price", border=1, fill=True, align="R")
+        pdf.cell(40, 10, "Price (Rs.)", border=1, fill=True, align="R")
         pdf.cell(40, 10, "Subtotal", border=1, fill=True, ln=True, align="R")
 
-        # ---------- ORDER ITEMS ----------
+        # ---------- ITEMS ----------
         pdf.set_font("Arial", "", 12)
         pdf.set_text_color(0, 0, 0)
 
@@ -176,18 +175,18 @@ def download_invoice(order_id):
 
             pdf.cell(80, 10, name, border=1)
             pdf.cell(30, 10, str(item.quantity), border=1, align="C")
-            pdf.cell(40, 10, f"₹ {item.price}", border=1, align="R")
-            pdf.cell(40, 10, f"₹ {subtotal}", border=1, ln=True, align="R")
+            pdf.cell(40, 10, f"Rs. {item.price}", border=1, align="R")
+            pdf.cell(40, 10, f"Rs. {subtotal}", border=1, ln=True, align="R")
 
-        # ---------- TOTAL BOX ----------
+        # ---------- TOTAL ----------
+        pdf.ln(5)
         pdf.set_font("Arial", "B", 14)
         pdf.set_text_color(214, 40, 40)
-        pdf.ln(5)
         pdf.cell(150, 10, "TOTAL AMOUNT", border=1)
-        pdf.cell(40, 10, f"₹ {total_price}", border=1, ln=True, align="R")
+        pdf.cell(40, 10, f"Rs. {total_price}", border=1, ln=True, align="R")
         pdf.ln(5)
 
-        # ---------- PAYMENT DETAILS ----------
+        # ---------- PAYMENT INFO ----------
         pdf.set_font("Arial", "", 12)
         pdf.set_text_color(0, 0, 0)
         pdf.cell(190, 8, f"Payment Method: {order.payment_method}", ln=True)
@@ -203,12 +202,10 @@ def download_invoice(order_id):
             "For support: support@chunri.store"
         )
 
-        # ---------- FIX FOR RENDER (Return PDF properly) ----------
+        # ---------- RETURN PDF ----------
         pdf_data = pdf.output(dest='S').encode('latin1')
-        pdf_buffer = io.BytesIO(pdf_data)
-
         return send_file(
-            pdf_buffer,
+            io.BytesIO(pdf_data),
             mimetype="application/pdf",
             as_attachment=True,
             download_name=f"invoice_{order_id}.pdf"
@@ -250,4 +247,5 @@ def get_all_orders():
         })
 
     return output
+
 
