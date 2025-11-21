@@ -215,6 +215,7 @@ def download_invoice(order_id):
         print("INVOICE ERROR:", e)
         return {"error": "Failed to generate invoice"}, 500
 
+
 # ---------------------- ADMIN: GET ALL ORDERS -----------------------
 @order_bp.get("/admin/orders")
 @cross_origin()
@@ -247,5 +248,6 @@ def get_all_orders():
         })
 
     return output
+
 
 
