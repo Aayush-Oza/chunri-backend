@@ -43,21 +43,24 @@ def send_email(to, subject, body):
     return True
 
 
-# ----------------------------------------------------
-# SEND OTP
-# ----------------------------------------------------
 @auth_bp.route("/send-otp", methods=["POST", "OPTIONS"])
 @cross_origin()
 def send_otp():
     if request.method == "OPTIONS":
         return {}, 200
 
-    data = request.json
-    email = data["email"]
+    data = request.json or {}
 
+    # Validate email
+    email = data.get("email")
+    if not email or not isinstance(email, str) or email.strip() == "":
+        return {"error": "Invalid email"}, 400
+
+    # Remove old OTPs
     OTP.query.filter_by(email=email).delete()
     db.session.commit()
 
+    # Generate OTP
     otp = str(random.randint(100000, 999999))
     expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
 
@@ -65,12 +68,11 @@ def send_otp():
     db.session.add(record)
     db.session.commit()
 
-    email_status = send_email(email, "Chunri Store OTP", f"Your OTP is: {otp}")
-
-    if not email_status:
-        return {"error": "Failed to send OTP email"}, 500
+    # Send email
+    send_email(email, "Chunri Store OTP", f"Your OTP is: {otp}")
 
     return {"message": "OTP sent successfully"}
+
 
 
 
@@ -238,4 +240,5 @@ def change_password(user_id):
     db.session.commit()
 
     return {"message": "Password updated successfully"}
+
 
