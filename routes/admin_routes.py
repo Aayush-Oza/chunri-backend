@@ -1,12 +1,19 @@
-from flask import Blueprint
+from flask import Blueprint, request
 from models import User, Product, Order, OrderItem
 from flask_cors import cross_origin
 
 admin_bp = Blueprint('admin', __name__)
 
-@admin_bp.get('/stats')
+
+# -----------------------------------------------------------
+# ADMIN STATS
+# -----------------------------------------------------------
+@admin_bp.route('/stats', methods=["GET", "OPTIONS"])
 @cross_origin()
 def stats():
+    if request.method == "OPTIONS":
+        return {}, 200
+
     return {
         "users": User.query.count(),
         "products": Product.query.count(),
@@ -15,11 +22,14 @@ def stats():
 
 
 # -----------------------------------------------------------
-# 📌 NEW: ALL CUSTOMERS LIST (for customers.html)
+# ALL CUSTOMERS
 # -----------------------------------------------------------
-@admin_bp.get('/customers')
+@admin_bp.route('/customers', methods=["GET", "OPTIONS"])
 @cross_origin()
 def get_customers():
+    if request.method == "OPTIONS":
+        return {}, 200
+
     users = User.query.all()
     return [
         {
@@ -34,12 +44,15 @@ def get_customers():
 
 
 # -----------------------------------------------------------
-# 📌 NEW: ALL ORDERS LIST (for orders.html)
+# ALL ORDERS (FOR ADMIN)
 # -----------------------------------------------------------
-@admin_bp.get('/all-orders')
+@admin_bp.route('/all-orders', methods=["GET", "OPTIONS"])
 @cross_origin()
 def get_all_orders():
-    orders = Order.query.all()
+    if request.method == "OPTIONS":
+        return {}, 200
+
+    orders = Order.query.order_by(Order.id.desc()).all()
     output = []
 
     for o in orders:
