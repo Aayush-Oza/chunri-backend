@@ -197,9 +197,23 @@ def download_invoice(order_id):
         pdf.set_text_color(100, 100, 100)
         pdf.multi_cell(190, 8, "Thank you for shopping with Chunri Store!\nFor support: support@chunri.store")
 
-        # FIX — do not encode bytes
-        pdf_data = pdf.output(dest='S')
-        pdf_buffer = io.BytesIO(pdf_data)
+       pdf_output = pdf.output(dest='S')
+
+# Convert safely
+if isinstance(pdf_output, bytearray):
+    pdf_output = bytes(pdf_output)
+elif isinstance(pdf_output, str):
+    pdf_output = pdf_output.encode("latin1")
+
+pdf_buffer = io.BytesIO(pdf_output)
+
+return send_file(
+    pdf_buffer,
+    mimetype="application/pdf",
+    as_attachment=True,
+    download_name=f"invoice_{order_id}.pdf"
+)
+
 
         return send_file(
             pdf_buffer,
@@ -244,6 +258,7 @@ def get_all_orders():
         })
 
     return output
+
 
 
 
