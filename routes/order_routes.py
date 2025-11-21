@@ -155,7 +155,6 @@ def download_invoice(order_id):
         pdf.set_font("Arial", "B", 12)
         pdf.set_fill_color(214, 40, 40)
         pdf.set_text_color(255, 255, 255)
-
         pdf.cell(80, 10, "Item", border=1, fill=True)
         pdf.cell(30, 10, "Qty", border=1, fill=True, align="C")
         pdf.cell(40, 10, "Price (Rs.)", border=1, fill=True, align="R")
@@ -164,8 +163,8 @@ def download_invoice(order_id):
         # ITEMS
         pdf.set_font("Arial", "", 12)
         pdf.set_text_color(0, 0, 0)
-
         total_price = 0
+
         for item in items:
             product = Product.query.get(item.product_id)
             name = product.name if product else "Deleted Item"
@@ -197,8 +196,14 @@ def download_invoice(order_id):
         pdf.set_text_color(100, 100, 100)
         pdf.multi_cell(190, 8, "Thank you for shopping with Chunri Store!\nFor support: support@chunri.store")
 
-        # OUTPUT FIX
-        pdf_output = pdf.output(dest='S').encode('latin-1')
+        # OUTPUT FIX — handles bytearray or string
+        pdf_output = pdf.output(dest='S')
+
+        if isinstance(pdf_output, bytearray):
+            pdf_output = bytes(pdf_output)
+        elif isinstance(pdf_output, str):
+            pdf_output = pdf_output.encode("latin-1")
+
         pdf_buffer = io.BytesIO(pdf_output)
 
         return send_file(
@@ -211,6 +216,7 @@ def download_invoice(order_id):
     except Exception as e:
         print("INVOICE ERROR:", e)
         return {"error": "Failed to generate invoice"}, 500
+
 
 # ---------------------- ADMIN: GET ALL ORDERS -----------------------
 @order_bp.get("/admin/orders")
@@ -244,7 +250,6 @@ def get_all_orders():
         })
 
     return output
-
 
 
 
