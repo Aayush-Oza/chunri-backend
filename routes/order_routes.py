@@ -125,13 +125,13 @@ def download_invoice(order_id):
         pdf = FPDF()
         pdf.add_page()
 
-        # ---------- HEADER ----------
+        # HEADER
         pdf.set_font("Arial", "B", 18)
         pdf.set_text_color(214, 40, 40)
         pdf.cell(190, 10, "CHUNRI STORE - INVOICE", ln=True, align="C")
         pdf.ln(5)
 
-        # ---------- META ----------
+        # META
         pdf.set_font("Arial", "", 12)
         pdf.set_text_color(0, 0, 0)
         pdf.cell(100, 8, f"Invoice No: CHN-{order.id:05}", ln=True)
@@ -139,7 +139,7 @@ def download_invoice(order_id):
         pdf.cell(100, 8, f"Time: {order.created_at.strftime('%I:%M %p')}", ln=True)
         pdf.ln(5)
 
-        # ---------- CUSTOMER DETAILS ----------
+        # CUSTOMER DETAILS
         pdf.set_font("Arial", "B", 12)
         pdf.set_fill_color(240, 240, 240)
         pdf.cell(190, 8, "Customer Details", ln=True, fill=True)
@@ -151,7 +151,7 @@ def download_invoice(order_id):
         pdf.multi_cell(190, 8, f"Address: {order.customer_address}")
         pdf.ln(4)
 
-        # ---------- TABLE HEADER ----------
+        # TABLE HEADER
         pdf.set_font("Arial", "B", 12)
         pdf.set_fill_color(214, 40, 40)
         pdf.set_text_color(255, 255, 255)
@@ -161,12 +161,11 @@ def download_invoice(order_id):
         pdf.cell(40, 10, "Price (Rs.)", border=1, fill=True, align="R")
         pdf.cell(40, 10, "Subtotal", border=1, fill=True, ln=True, align="R")
 
-        # ---------- ITEMS ----------
+        # ITEMS
         pdf.set_font("Arial", "", 12)
         pdf.set_text_color(0, 0, 0)
 
         total_price = 0
-
         for item in items:
             product = Product.query.get(item.product_id)
             name = product.name if product else "Deleted Item"
@@ -175,37 +174,35 @@ def download_invoice(order_id):
 
             pdf.cell(80, 10, name, border=1)
             pdf.cell(30, 10, str(item.quantity), border=1, align="C")
-            pdf.cell(40, 10, f"Rs. {item.price}", border=1, align="R")
-            pdf.cell(40, 10, f"Rs. {subtotal}", border=1, ln=True, align="R")
+            pdf.cell(40, 10, f"{item.price}", border=1, align="R")
+            pdf.cell(40, 10, f"{subtotal}", border=1, ln=True, align="R")
 
-        # ---------- TOTAL ----------
+        # TOTAL
         pdf.ln(5)
         pdf.set_font("Arial", "B", 14)
         pdf.set_text_color(214, 40, 40)
         pdf.cell(150, 10, "TOTAL AMOUNT", border=1)
-        pdf.cell(40, 10, f"Rs. {total_price}", border=1, ln=True, align="R")
+        pdf.cell(40, 10, f"{total_price}", border=1, ln=True, align="R")
         pdf.ln(5)
 
-        # ---------- PAYMENT INFO ----------
+        # PAYMENT INFO
         pdf.set_font("Arial", "", 12)
         pdf.set_text_color(0, 0, 0)
         pdf.cell(190, 8, f"Payment Method: {order.payment_method}", ln=True)
         pdf.cell(190, 8, f"Payment Status: {order.payment_status.upper()}", ln=True)
         pdf.ln(10)
 
-        # ---------- FOOTER ----------
+        # FOOTER
         pdf.set_font("Arial", "I", 12)
         pdf.set_text_color(100, 100, 100)
-        pdf.multi_cell(
-            190, 8,
-            "Thank you for shopping with Chunri Store!\n"
-            "For support: support@chunri.store"
-        )
+        pdf.multi_cell(190, 8, "Thank you for shopping with Chunri Store!\nFor support: support@chunri.store")
 
-        # ---------- RETURN PDF ----------
-        pdf_data = pdf.output(dest='S').encode('latin1')
+        # FIX — do not encode bytes
+        pdf_data = pdf.output(dest='S')
+        pdf_buffer = io.BytesIO(pdf_data)
+
         return send_file(
-            io.BytesIO(pdf_data),
+            pdf_buffer,
             mimetype="application/pdf",
             as_attachment=True,
             download_name=f"invoice_{order_id}.pdf"
@@ -214,7 +211,6 @@ def download_invoice(order_id):
     except Exception as e:
         print("INVOICE ERROR:", e)
         return {"error": "Failed to generate invoice"}, 500
-
 
 # ---------------------- ADMIN: GET ALL ORDERS -----------------------
 @order_bp.get("/admin/orders")
@@ -248,6 +244,7 @@ def get_all_orders():
         })
 
     return output
+
 
 
 
