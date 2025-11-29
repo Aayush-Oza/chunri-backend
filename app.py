@@ -15,12 +15,15 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # GLOBAL CORS (SAFE)
+    # ------------ 🔥 REQUIRED FOR RENDER POSTGRES FIX -------------
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_pre_ping": True,   # Prevents SSL connection closed
+        "pool_recycle": 280      # Avoid connection timeout
+    }
+    # ---------------------------------------------------------------
+
+    # Global CORS
     CORS(app, supports_credentials=True, origins="*")
-
-
-
-
 
     db.init_app(app)
     Migrate(app, db)
@@ -31,7 +34,6 @@ def create_app():
     app.register_blueprint(order_bp, url_prefix="/api")
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(analytics_bp, url_prefix="/analytics")
-
 
     @app.route("/")
     def home():
