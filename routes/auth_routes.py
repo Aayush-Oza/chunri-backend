@@ -25,29 +25,33 @@ ADMIN_PASSWORD = "Pkumawat@121"
 # GMAIL SMTP EMAIL SENDER (SSL - PORT 465)
 # ----------------------------------------------------
 def send_email(to, subject, body):
-    smtp_server = "smtp.gmail.com"
-    smtp_port = 465  # SSL PORT
-    smtp_user = os.getenv("SMTP_USER")  # your Gmail
-    smtp_pass = os.getenv("SMTP_PASS")  # app password
+    smtp_server = os.getenv("SMTP_SERVER")   # smtp.gmail.com
+    smtp_port = int(os.getenv("SMTP_PORT"))  # 587 (RECOMMENDED)
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
 
-    print("SMTP USED:", smtp_user, smtp_server, smtp_port)
+    message = f"Subject: {subject}\n\n{body}"
 
-    msg = MIMEText(body)
-    msg["Subject"] = subject
-    msg["From"] = smtp_user
-    msg["To"] = to
-
-    try:
+    # --------- IF USING PORT 587 (STARTTLS) ----------
+    if smtp_port == 587:
         context = ssl.create_default_context()
-        server = smtplib.SMTP_SSL(smtp_server, smtp_port, context=context)
-        server.login(smtp_user, smtp_pass)
-        server.sendmail(smtp_user, [to], msg.as_string())
-        server.quit()
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls(context=context)
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, to, message)
         return True
 
-    except Exception as e:
-        print("EMAIL ERROR:", e)
-        return False
+    # --------- IF USING PORT 465 (SSL) ----------
+    elif smtp_port == 465:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(smtp_server, smtp_port, context=context) as server:
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, to, message)
+        return True
+
+    else:
+        raise ValueError("Invalid SMTP Port (must be 465 or 587)")
+
 
 
 # ----------------------------------------------------
@@ -246,3 +250,4 @@ def change_password(user_id):
     db.session.commit()
 
     return {"message": "Password updated successfully"}
+
