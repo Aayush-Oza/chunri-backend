@@ -243,7 +243,7 @@ def change_password(user_id):
 
     user = User.query.get(user_id)
     if not user:
-    return {"error": "User not found"}, 404
+        return {"error": "User not found"}, 404   # ← FIXED INDENT
 
     data = request.json
     old_password = data.get("old_password")
@@ -256,3 +256,4 @@ def change_password(user_id):
     db.session.commit()
 
     return {"message": "Password updated successfully"}
+
