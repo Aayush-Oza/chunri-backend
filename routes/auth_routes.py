@@ -28,10 +28,9 @@ def send_email(to, subject, body, retries=2):
 
     smtp_server = os.getenv("SMTP_SERVER")
     smtp_port = int(os.getenv("SMTP_PORT"))
-    smtp_user = os.getenv("SMTP_USER")
-    smtp_password = os.getenv("SMTP_PASSWORD")
+    smtp_user = os.getenv("SMTP_USER")     # Should be: "resend"
+    smtp_password = os.getenv("SMTP_PASSWORD")  # Your API key
 
-    # DEBUG — SHOW ALL SMTP VARIABLES IN RENDER LOGS
     print("==== SMTP DEBUG ====")
     print("SERVER:", smtp_server)
     print("PORT:", smtp_port)
@@ -45,10 +44,19 @@ def send_email(to, subject, body, retries=2):
 
     for attempt in range(retries):
         try:
-            server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
-            server.starttls()   # IMPORTANT FOR BREVO
+            # ✔ RESEND USES SSL (not starttls)
+            import ssl
+            context = ssl.create_default_context()
+
+            server = smtplib.SMTP_SSL(
+                smtp_server,
+                smtp_port,
+                context=context,
+                timeout=10
+            )
+
             server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, to, msg.as_string())
+            server.sendmail(smtp_user, [to], msg.as_string())
             server.quit()
             return True
 
@@ -256,3 +264,4 @@ def change_password(user_id):
     db.session.commit()
 
     return {"message": "Password updated successfully"}
+
