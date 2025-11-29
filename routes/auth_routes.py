@@ -8,6 +8,10 @@ import smtplib
 import ssl
 import time
 from email.mime.text import MIMEText
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Loads .env locally, ignored on Render
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -19,13 +23,13 @@ ADMIN_PASSWORD = "Pkumawat@121"
 
 
 # ----------------------------------------------------
-# EMAIL SENDER (PERMANENT FIXED)
+# SECURE EMAIL SENDER (ENV BASED)
 # ----------------------------------------------------
 def send_email(to, subject, body, retries=2):
-    smtp_server = "smtp.gmail.com"
-    smtp_port = 465
-    smtp_user = "aayushoza2006@gmail.com"
-    smtp_password = "ocsjcyvziusorfuw"
+    smtp_server = os.getenv("SMTP_SERVER")
+    smtp_port = int(os.getenv("SMTP_PORT"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")  # SECRET (NOT IN CODE)
 
     msg = MIMEText(body)
     msg["Subject"] = subject
@@ -158,7 +162,6 @@ def login():
         email = data["email"]
         password = data["password"]
 
-        # Admin
         if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
             return {
                 "message": "Admin login successful",
@@ -166,7 +169,6 @@ def login():
                 "is_admin": True
             }
 
-        # User
         user = User.query.filter_by(email=email).first()
         if not user or not user.check_password(password):
             return {"error": "Invalid credentials"}, 401
@@ -238,7 +240,7 @@ def change_password(user_id):
 
     user = User.query.get(user_id)
     if not user:
-        return {"error": "User not found"}, 404   # FIXED INDENT PROPERLY
+        return {"error": "User not found"}, 404
 
     data = request.json
     old_password = data.get("old_password")
