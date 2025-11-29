@@ -31,7 +31,8 @@ def send_email(to, subject, body):
     msg["To"] = to
 
     try:
-        server = smtplib.SMTP(smtp_server, smtp_port)
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=8)
+
         server.starttls()
         server.login(smtp_user, smtp_password)
         server.sendmail(smtp_user, to, msg.as_string())
@@ -240,5 +241,6 @@ def change_password(user_id):
     db.session.commit()
 
     return {"message": "Password updated successfully"}
+
 
 
