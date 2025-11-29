@@ -5,6 +5,8 @@ from flask_cors import cross_origin
 import random
 import datetime
 import smtplib
+import ssl
+import time
 from email.mime.text import MIMEText
 
 auth_bp = Blueprint("auth", __name__)
@@ -17,11 +19,11 @@ ADMIN_PASSWORD = "Pkumawat@121"
 
 
 # ----------------------------------------------------
-# EMAIL SENDER
+# EMAIL SENDER (PERMANENT FIXED)
 # ----------------------------------------------------
-def send_email(to, subject, body):
+def send_email(to, subject, body, retries=2):
     smtp_server = "smtp.gmail.com"
-    smtp_port = 587
+    smtp_port = 465  # SSL port (more stable on Render)
     smtp_user = "aayushoza2006@gmail.com"
     smtp_password = "ocsjcyvziusorfuw"
 
@@ -30,20 +32,31 @@ def send_email(to, subject, body):
     msg["From"] = smtp_user
     msg["To"] = to
 
-    try:
-        server = smtplib.SMTP(smtp_server, smtp_port, timeout=8)
+    for attempt in range(retries):
+        try:
+            context = ssl.create_default_context()
+            server = smtplib.SMTP_SSL(
+                smtp_server,
+                smtp_port,
+                timeout=8,
+                context=context
+            )
 
-        server.starttls()
-        server.login(smtp_user, smtp_password)
-        server.sendmail(smtp_user, to, msg.as_string())
-        server.quit()
-    except Exception as e:
-        print("EMAIL FAILED:", e)
-        return False
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, to, msg.as_string())
+            server.quit()
+            return True
 
-    return True
+        except Exception as e:
+            print(f"EMAIL ATTEMPT {attempt+1} FAILED:", e)
+            time.sleep(1)
+
+    return False
 
 
+# ----------------------------------------------------
+# SEND OTP
+# ----------------------------------------------------
 @auth_bp.route("/send-otp", methods=["POST", "OPTIONS"])
 @cross_origin()
 def send_otp():
@@ -51,17 +64,16 @@ def send_otp():
         return {}, 200
 
     data = request.json or {}
-
-    # Validate email
     email = data.get("email")
+
     if not email or not isinstance(email, str) or email.strip() == "":
         return {"error": "Invalid email"}, 400
 
-    # Remove old OTPs
+    # Remove old OTP
     OTP.query.filter_by(email=email).delete()
     db.session.commit()
 
-    # Generate OTP
+    # Generate new OTP
     otp = str(random.randint(100000, 999999))
     expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
 
@@ -70,11 +82,11 @@ def send_otp():
     db.session.commit()
 
     # Send email
-    send_email(email, "Chunri Store OTP", f"Your OTP is: {otp}")
+    ok = send_email(email, "Chunri Store OTP", f"Your OTP is: {otp}")
+    if not ok:
+        return {"error": "Failed to send email"}, 500
 
     return {"message": "OTP sent successfully"}
-
-
 
 
 # ----------------------------------------------------
@@ -114,8 +126,8 @@ def register():
         return {}, 200
 
     data = request.json
-
     otp_record = OTP.query.filter_by(email=data["email"]).first()
+
     if not otp_record:
         return {"error": "OTP not verified"}, 400
 
@@ -130,6 +142,7 @@ def register():
     db.session.add(user)
     db.session.commit()
 
+    # Clear OTP
     OTP.query.filter_by(email=data["email"]).delete()
     db.session.commit()
 
@@ -137,7 +150,7 @@ def register():
 
 
 # ----------------------------------------------------
-# LOGIN (FIXED)
+# LOGIN
 # ----------------------------------------------------
 @auth_bp.route("/login", methods=["POST", "OPTIONS"])
 @cross_origin()
@@ -150,6 +163,7 @@ def login():
         email = data["email"]
         password = data["password"]
 
+        # Admin Login
         if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
             return {
                 "message": "Admin login successful",
@@ -157,6 +171,7 @@ def login():
                 "is_admin": True
             }
 
+        # User Login
         user = User.query.filter_by(email=email).first()
         if not user or not user.check_password(password):
             return {"error": "Invalid credentials"}, 401
@@ -173,7 +188,7 @@ def login():
 
 
 # ----------------------------------------------------
-# PROFILE (GET)
+# GET PROFILE
 # ----------------------------------------------------
 @auth_bp.route("/profile/<int:user_id>", methods=["GET", "OPTIONS"])
 @cross_origin()
@@ -228,7 +243,7 @@ def change_password(user_id):
 
     user = User.query.get(user_id)
     if not user:
-        return {"error": "User not found"}, 404
+    return {"error": "User not found"}, 404
 
     data = request.json
     old_password = data.get("old_password")
@@ -241,6 +256,3 @@ def change_password(user_id):
     db.session.commit()
 
     return {"message": "Password updated successfully"}
-
-
-
