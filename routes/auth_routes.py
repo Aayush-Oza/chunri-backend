@@ -5,13 +5,12 @@ from flask_cors import cross_origin
 import random
 import datetime
 import smtplib
-import ssl
 import time
 from email.mime.text import MIMEText
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # Loads .env locally, ignored on Render
+load_dotenv()   # Only used locally. Render ignores this.
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -23,13 +22,21 @@ ADMIN_PASSWORD = "Pkumawat@121"
 
 
 # ----------------------------------------------------
-# SECURE EMAIL SENDER (ENV BASED)
+# SECURE BREVO EMAIL SENDER (STARTTLS)
 # ----------------------------------------------------
 def send_email(to, subject, body, retries=2):
+
     smtp_server = os.getenv("SMTP_SERVER")
     smtp_port = int(os.getenv("SMTP_PORT"))
     smtp_user = os.getenv("SMTP_USER")
-    smtp_password = os.getenv("SMTP_PASSWORD")  # SECRET (NOT IN CODE)
+    smtp_password = os.getenv("SMTP_PASSWORD")
+
+    # DEBUG — SHOW ALL SMTP VARIABLES IN RENDER LOGS
+    print("==== SMTP DEBUG ====")
+    print("SERVER:", smtp_server)
+    print("PORT:", smtp_port)
+    print("USER:", smtp_user)
+    print("====================")
 
     msg = MIMEText(body)
     msg["Subject"] = subject
@@ -38,20 +45,15 @@ def send_email(to, subject, body, retries=2):
 
     for attempt in range(retries):
         try:
-            context = ssl.create_default_context()
-            server = smtplib.SMTP_SSL(
-                smtp_server,
-                smtp_port,
-                timeout=8,
-                context=context
-            )
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+            server.starttls()   # IMPORTANT FOR BREVO
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, to, msg.as_string())
             server.quit()
             return True
 
         except Exception as e:
-            print(f"EMAIL ATTEMPT {attempt + 1} FAILED:", e)
+            print(f"EMAIL ATTEMPT {attempt+1} FAILED:", e)
             time.sleep(1)
 
     return False
@@ -72,6 +74,7 @@ def send_otp():
     if not email or not isinstance(email, str) or email.strip() == "":
         return {"error": "Invalid email"}, 400
 
+    # Remove previous OTP
     OTP.query.filter_by(email=email).delete()
     db.session.commit()
 
