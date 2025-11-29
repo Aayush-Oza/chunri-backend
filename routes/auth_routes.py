@@ -4,11 +4,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import cross_origin
 import random
 import datetime
-import requests
+import smtplib
+import ssl
+from email.mime.text import MIMEText
 import os
 from dotenv import load_dotenv
 
-load_dotenv()   # Only for local, Render ignores this
+load_dotenv()   # Only for local. Render ignores this.
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -20,32 +22,32 @@ ADMIN_PASSWORD = "Pkumawat@121"
 
 
 # ----------------------------------------------------
-# EMAIL SENDER USING RESEND (REST API) — 100% WORKS
+# GMAIL SMTP EMAIL SENDER (SSL - PORT 465)
 # ----------------------------------------------------
 def send_email(to, subject, body):
-    api_key = os.getenv("RESEND_API_KEY")
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 465  # SSL PORT
+    smtp_user = os.getenv("SMTP_USER")  # your Gmail
+    smtp_pass = os.getenv("SMTP_PASS")  # app password
 
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
+    print("SMTP USED:", smtp_user, smtp_server, smtp_port)
 
-    data = {
-        "from": "Chunri Store <onboarding@resend.dev>",
-        "to": [to],
-        "subject": subject,
-        "html": f"<p>{body}</p>"
-    }
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = smtp_user
+    msg["To"] = to
 
-    response = requests.post(
-        "https://api.resend.com/emails",
-        json=data,
-        headers=headers
-    )
+    try:
+        context = ssl.create_default_context()
+        server = smtplib.SMTP_SSL(smtp_server, smtp_port, context=context)
+        server.login(smtp_user, smtp_pass)
+        server.sendmail(smtp_user, [to], msg.as_string())
+        server.quit()
+        return True
 
-    print("RESEND RESPONSE:", response.text)
-
-    return response.status_code == 200
+    except Exception as e:
+        print("EMAIL ERROR:", e)
+        return False
 
 
 # ----------------------------------------------------
