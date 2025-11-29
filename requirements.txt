@@ -10,3 +10,6 @@ Flask-Migrate
 email-validator
 Flask-Mail
 Werkzeug
+requests
+
+
