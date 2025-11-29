@@ -23,7 +23,7 @@ ADMIN_PASSWORD = "Pkumawat@121"
 # ----------------------------------------------------
 def send_email(to, subject, body, retries=2):
     smtp_server = "smtp.gmail.com"
-    smtp_port = 465  # SSL port (more stable on Render)
+    smtp_port = 465
     smtp_user = "aayushoza2006@gmail.com"
     smtp_password = "ocsjcyvziusorfuw"
 
@@ -41,14 +41,13 @@ def send_email(to, subject, body, retries=2):
                 timeout=8,
                 context=context
             )
-
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, to, msg.as_string())
             server.quit()
             return True
 
         except Exception as e:
-            print(f"EMAIL ATTEMPT {attempt+1} FAILED:", e)
+            print(f"EMAIL ATTEMPT {attempt + 1} FAILED:", e)
             time.sleep(1)
 
     return False
@@ -69,11 +68,9 @@ def send_otp():
     if not email or not isinstance(email, str) or email.strip() == "":
         return {"error": "Invalid email"}, 400
 
-    # Remove old OTP
     OTP.query.filter_by(email=email).delete()
     db.session.commit()
 
-    # Generate new OTP
     otp = str(random.randint(100000, 999999))
     expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
 
@@ -81,7 +78,6 @@ def send_otp():
     db.session.add(record)
     db.session.commit()
 
-    # Send email
     ok = send_email(email, "Chunri Store OTP", f"Your OTP is: {otp}")
     if not ok:
         return {"error": "Failed to send email"}, 500
@@ -142,7 +138,6 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    # Clear OTP
     OTP.query.filter_by(email=data["email"]).delete()
     db.session.commit()
 
@@ -163,7 +158,7 @@ def login():
         email = data["email"]
         password = data["password"]
 
-        # Admin Login
+        # Admin
         if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
             return {
                 "message": "Admin login successful",
@@ -171,7 +166,7 @@ def login():
                 "is_admin": True
             }
 
-        # User Login
+        # User
         user = User.query.filter_by(email=email).first()
         if not user or not user.check_password(password):
             return {"error": "Invalid credentials"}, 401
@@ -243,7 +238,7 @@ def change_password(user_id):
 
     user = User.query.get(user_id)
     if not user:
-        return {"error": "User not found"}, 404   # ← FIXED INDENT
+        return {"error": "User not found"}, 404   # FIXED INDENT PROPERLY
 
     data = request.json
     old_password = data.get("old_password")
@@ -256,4 +251,3 @@ def change_password(user_id):
     db.session.commit()
 
     return {"message": "Password updated successfully"}
-
