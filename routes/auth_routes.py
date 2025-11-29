@@ -4,13 +4,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import cross_origin
 import random
 import datetime
-import smtplib
-import time
-from email.mime.text import MIMEText
+import requests
 import os
 from dotenv import load_dotenv
 
-load_dotenv()   # Only used locally. Render ignores this.
+load_dotenv()   # Only for local, Render ignores this
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -22,49 +20,32 @@ ADMIN_PASSWORD = "Pkumawat@121"
 
 
 # ----------------------------------------------------
-# SECURE BREVO EMAIL SENDER (STARTTLS)
+# EMAIL SENDER USING RESEND (REST API) — 100% WORKS
 # ----------------------------------------------------
-def send_email(to, subject, body, retries=2):
+def send_email(to, subject, body):
+    api_key = os.getenv("RESEND_API_KEY")
 
-    smtp_server = os.getenv("SMTP_SERVER")
-    smtp_port = int(os.getenv("SMTP_PORT"))
-    smtp_user = os.getenv("SMTP_USER")     # Should be: "resend"
-    smtp_password = os.getenv("SMTP_PASSWORD")  # Your API key
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
 
-    print("==== SMTP DEBUG ====")
-    print("SERVER:", smtp_server)
-    print("PORT:", smtp_port)
-    print("USER:", smtp_user)
-    print("====================")
+    data = {
+        "from": "Chunri Store <onboarding@resend.dev>",
+        "to": [to],
+        "subject": subject,
+        "html": f"<p>{body}</p>"
+    }
 
-    msg = MIMEText(body)
-    msg["Subject"] = subject
-    msg["From"] = smtp_user
-    msg["To"] = to
+    response = requests.post(
+        "https://api.resend.com/emails",
+        json=data,
+        headers=headers
+    )
 
-    for attempt in range(retries):
-        try:
-            # ✔ RESEND USES SSL (not starttls)
-            import ssl
-            context = ssl.create_default_context()
+    print("RESEND RESPONSE:", response.text)
 
-            server = smtplib.SMTP_SSL(
-                smtp_server,
-                smtp_port,
-                context=context,
-                timeout=10
-            )
-
-            server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, [to], msg.as_string())
-            server.quit()
-            return True
-
-        except Exception as e:
-            print(f"EMAIL ATTEMPT {attempt+1} FAILED:", e)
-            time.sleep(1)
-
-    return False
+    return response.status_code == 200
 
 
 # ----------------------------------------------------
@@ -82,7 +63,6 @@ def send_otp():
     if not email or not isinstance(email, str) or email.strip() == "":
         return {"error": "Invalid email"}, 400
 
-    # Remove previous OTP
     OTP.query.filter_by(email=email).delete()
     db.session.commit()
 
@@ -264,4 +244,3 @@ def change_password(user_id):
     db.session.commit()
 
     return {"message": "Password updated successfully"}
-
